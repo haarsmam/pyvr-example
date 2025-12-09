@@ -1,6 +1,7 @@
 import ctypes
 import os
 import sys
+import platform
 
 import pygame
 
@@ -13,20 +14,28 @@ VISIBLE = 0
 
 class DetectContext:
     def __init__(self):
-        ctypes.windll.opengl32.wglGetCurrentDC.restype = ctypes.c_void_p
-        ctypes.windll.opengl32.wglGetCurrentContext.restype = ctypes.c_void_p
-        self.hdc = ctypes.windll.opengl32.wglGetCurrentDC()
-        self.hglrc = ctypes.windll.opengl32.wglGetCurrentContext()
+        if platform.system() == "Windows":
+            ctypes.windll.opengl32.wglGetCurrentDC.restype = ctypes.c_void_p
+            ctypes.windll.opengl32.wglGetCurrentContext.restype = ctypes.c_void_p
+            self.hdc = ctypes.windll.opengl32.wglGetCurrentDC()
+            self.hglrc = ctypes.windll.opengl32.wglGetCurrentContext()
+        else:
+            # On Linux, pygame handles context management internally
+            self.hdc = None
+            self.hglrc = None
 
     def make_current(self):
-        ctypes.windll.opengl32.wglMakeCurrent.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        ctypes.windll.opengl32.wglMakeCurrent(self.hdc, self.hglrc)
+        if platform.system() == "Windows":
+            ctypes.windll.opengl32.wglMakeCurrent.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            ctypes.windll.opengl32.wglMakeCurrent(self.hdc, self.hglrc)
+        # On Linux, pygame.display.set_mode already set the current context
 
 class g:
     ctx = None
 
 def create_window(*args, **kwargs):
-    os.environ['SDL_WINDOWS_DPI_AWARENESS'] = 'permonitorv2'
+    if platform.system() == "Windows":
+        os.environ['SDL_WINDOWS_DPI_AWARENESS'] = 'permonitorv2'
 
     pygame.init()
     pygame.display.set_mode((1280, 720), flags=pygame.OPENGL | pygame.DOUBLEBUF, vsync=False)

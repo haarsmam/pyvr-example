@@ -16,15 +16,15 @@ class Demo(ElementSingleton):
     def init_mgl(self):
         self.mgl = MGL()
 
-        self.journey_obj = OBJ('data/models/journey/journey.obj', self.mgl.program('data/shaders/default.vert', 'data/shaders/default.frag'), centered=True)
+        self.knife_obj = OBJ("data/models/knife/knife.obj", self.mgl.program("data/shaders/default.vert", "data/shaders/default.frag"), centered=True)
 
-        self.ak_obj = OBJ('data/models/ak47/ak47.obj', self.mgl.program('data/shaders/default.vert', 'data/shaders/default.frag'), centered=True)
+        self.m4_obj = OBJ("data/models/m4/m4.obj", self.mgl.program("data/shaders/default.vert", "data/shaders/default.frag"), centered=True)
 
-        self.shiba_obj = OBJ('data/models/shiba/shiba.obj', self.mgl.program('data/shaders/default.vert', 'data/shaders/default.frag'), centered=True)
+        self.watch_obj = OBJ("data/models/watch/watch.obj", self.mgl.program("data/shaders/default.vert", "data/shaders/default.frag"), centered=True)
 
-        self.test_entity = self.journey_obj.new_entity()
-        self.test_entity_2 = self.ak_obj.new_entity()
-        self.test_entity_3 = self.shiba_obj.new_entity()
+        self.test_entity = self.knife_obj.new_entity()
+        self.test_entity_2 = self.m4_obj.new_entity()
+        self.test_entity_3 = self.watch_obj.new_entity()
 
         self.camera = Camera(up=(0, -1, 0))
         self.camera.light_pos = [0.5, 1, 1]

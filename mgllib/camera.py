@@ -8,6 +8,7 @@ class Camera:
         self.update_matrix()
 
         self.light_pos = [0, 1, 0]
+        self.eye_pos = list(pos)
 
     def lookat(self, target):
         self.target = list(target[:3])

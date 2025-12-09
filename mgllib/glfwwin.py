@@ -1,6 +1,6 @@
 # This implementation is specific to Windows. See PyOpenXR's hello_xr example for a linux variation.
 
-from OpenGL import GL, WGL
+from OpenGL import GL
 import glfw
 
 from .elements import ElementSingleton

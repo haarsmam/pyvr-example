@@ -19,6 +19,15 @@ from xr.functions import *
 from .const import FORCE_SRGB
 
 def hack_pyopenxr(window_size, window_title='VR Test'):
+
+    def structure_type_missing_wrapper(cls, value):
+
+        # Unknown OpenXR event type (extension event we don't support)
+        print(f"[WARNING] Unknown StructureType: {value}, returning UNKNOWN", flush=True)
+        return StructureType.UNKNOWN
+
+    StructureType._missing_ = classmethod(structure_type_missing_wrapper)
+
     # hack the default rendering plugin so we don't have to write a custom one
     def opengl_graphics_init(self, instance, system, title='glfw OpenGL window'):
         if not glfw.init():
@@ -99,6 +108,21 @@ def hack_pyopenxr(window_size, window_title='VR Test'):
                     return sf
         raise RuntimeError("No runtime swapchain format supported for color swapchain")
 
+    # save begin_frame so we can wrap it
+    original_begin_frame = OpenGLGraphics.begin_frame
+
+    # wrap begin_frame to suppress invalid value error for glBindFramebuffer
+    def opengl_graphics_begin_frame_wrapper(self, layer_view, color_texture):
+        try:
+            return original_begin_frame(self, layer_view, color_texture)
+        except GL.error.GLError as e:
+            # Suppress invalid value error for glBindFramebuffer
+            if e.err == 1281:
+                 print(f"[WARNING] Suppressed expected OpenGL Error manually in begin_frame: {e}")
+            else:
+                raise e
+
     # the cursed overrides
     OpenGLGraphics.__init__ = opengl_graphics_init
     OpenGLGraphics.select_color_swapchain_format = opengl_graphics_select_color_swapchain_format
+    OpenGLGraphics.begin_frame = opengl_graphics_begin_frame_wrapper
