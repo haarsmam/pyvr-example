@@ -1,12 +1,17 @@
+#! /usr/bin/env python3
+
 import sys
 import time
 import math
 import random
 import noise
+import socket
+import atexit
 
 import pygame
 from OpenGL import GL
 import glm
+import xr
 
 from mgllib.xrwin import XRWindow
 from mgllib.glfwwin import XRGLFWWin
@@ -24,6 +29,20 @@ from mgllib.npc import NPC
 from mgllib.sound import Sounds
 from mgllib.entity import Entity
 from mgllib.hud import HUD
+
+_lock_socket = None
+
+
+def is_already_running():
+    global _lock_socket
+    try:
+        _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _lock_socket.bind(('127.0.0.1', 45678))
+        atexit.register(lambda: _lock_socket and _lock_socket.close())
+        return False
+    except OSError:
+        return True
+
 
 class Demo(ElementSingleton):
     def __init__(self):
@@ -231,4 +250,14 @@ class Demo(ElementSingleton):
 
         self.hud.render()
 
-Demo().run()
+if __name__ == '__main__':
+    if is_already_running():
+        print("xrdemo is already running!")
+        sys.exit(1)
+
+    try:
+        Demo().run()
+    except xr.exception.RuntimeFailureError:
+        print("Error: SteamVR is not running. Please start SteamVR first.")
+        sys.exit(1)
+

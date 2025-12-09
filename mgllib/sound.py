@@ -19,9 +19,49 @@ class Sounds(ElementSingleton):
         self.sources = []
         self.sounds = {}
 
-        self.set_audio_device('OpenAL Soft on Headphones (Oculus Virtual Audio Device)')
+        self.set_audio_device(self.find_vr_audio_device())
 
         self.head_pos = glm.vec3(0)
+    
+    def find_vr_audio_device(self):
+        """Find VR headset audio device if available"""
+        all_devices = []
+        
+        # Try ALC_ALL_DEVICES_SPECIFIER first (OpenAL 1.1+) - this shows actual hardware
+        try:
+            ALC_ALL_DEVICES_SPECIFIER = 0x1013
+            devices_string = alcGetString(None, ALC_ALL_DEVICES_SPECIFIER)
+            if devices_string:
+                devices = devices_string.decode('utf-8').split('\x00')
+                all_devices = [d for d in devices if d]
+                print(f"[AUDIO] Available devices via ALC_ALL_DEVICES_SPECIFIER ({len(all_devices)}): {all_devices}")
+        except Exception as e:
+            print(f"[AUDIO] ALC_ALL_DEVICES_SPECIFIER not available: {e}")
+        
+        # Fall back to ALC_DEVICE_SPECIFIER if needed
+        if not all_devices:
+            devices_string = alcGetString(None, ALC_DEVICE_SPECIFIER)
+            if devices_string:
+                devices = devices_string.decode('utf-8').split('\x00')
+                all_devices = [d for d in devices if d]
+                print(f"[AUDIO] Available devices via ALC_DEVICE_SPECIFIER ({len(all_devices)}): {all_devices}")
+        
+        if all_devices:
+            # Look for common VR audio device names
+            vr_keywords = ['oculus', 'virtual audio', 'vr', 'valve', 'index', 'vive', 'rift', 'quest', 'meta', 'steam link']
+            for device in all_devices:
+                if any(keyword in device.lower() for keyword in vr_keywords):
+                    print(f"[AUDIO] Found VR audio device: {device}")
+                    return device
+        
+        # Fall back to default device
+        default_device = alcGetString(None, ALC_DEFAULT_DEVICE_SPECIFIER)
+        if default_device:
+            default_device = default_device.decode('utf-8')
+            print(f"[AUDIO] Using default audio device: {default_device}")
+            return default_device
+        
+        return None
 
     def load_sounds(self):
         for sound in os.listdir(self.path):
