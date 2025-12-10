@@ -13,9 +13,11 @@ from .util import segment_project_progress
 
 from .tracer import Tracer
 
+
 class VRItemComponent(Element):
     def __init__(self):
         super().__init__()
+
 
 # the two types are grip and interact (grib vs trigger)
 class VRItemPoint(Element):
@@ -46,17 +48,17 @@ class VRItemPoint(Element):
     @property
     def world_pos(self):
         return self.parent.transform * self.pos
-    
+
     def offsetted_world_pos(self, offset):
         return self.parent.transform * (self.pos + offset)
-    
+
     def grab(self, hand):
         if self.type in {'grip', 'trigger_grip', 'grip_interact', 'trigger_interact'}:
             if not (hand.interacting or self.interacting):
                 if self.type in {'grip', 'trigger_grip'}:
                     if self.parent.in_slot:
                         self.parent.in_slot.take()
-                    
+
                     self.parent.velocity_reset()
                     self.parent.floor_mode = False
                 if (self.type in {'grip_interact', 'trigger_interact'}) and (self.parent.primary_grip):
@@ -67,7 +69,7 @@ class VRItemPoint(Element):
                 if self.type in {'grip', 'trigger_grip'}:
                     hand.interacting = self
                     self.interacting = hand
-                    
+
                     # handle grip arrangement
                     if not self.parent.primary_grip:
                         self.parent.primary_grip = self
@@ -88,7 +90,7 @@ class VRItemPoint(Element):
             if not self.hover_vibrate_cooldown[hand.hand]:
                 hand.vibrate(amplitude=0.4)
             self.hover_vibrate_cooldown[hand.hand] = HOVER_COOLDOWN
-    
+
     def update(self, hand):
         self.hover_vibrate_cooldown[0] = max(self.hover_vibrate_cooldown[0] - self.e['XRWindow'].dt, 0)
         self.hover_vibrate_cooldown[1] = max(self.hover_vibrate_cooldown[1] - self.e['XRWindow'].dt, 0)
@@ -127,7 +129,7 @@ class VRItemPoint(Element):
 
                             # undo pivot placement by finding origin offset after the transform
                             origin = glm.vec3(0.0, 0.0, 0.0)
-                            #interaction_point_offset = (self.parent.transform * origin) - self.world_pos
+                            # interaction_point_offset = (self.parent.transform * origin) - self.world_pos
                             self.parent.pos = self.parent.transform * origin
                     else:
                         # this must be an alt grip
@@ -178,7 +180,7 @@ class VRItem(Element):
         self.recoil = glm.vec2(0.5, 0.0)
 
         self.velocity_reset()
-        self.gravity = 9.81 # m/s^2
+        self.gravity = 9.81  # m/s^2
 
         self.bounce = 0
         self.min_bounce = 0.2
@@ -203,7 +205,7 @@ class VRItem(Element):
         if (p_type in self.points) and len(self.points[p_type]):
             return self.points[p_type][0].world_pos
         return glm.vec3(0, 0, 0)
-    
+
     def handle_hover(self, hand):
         if not hand.interacting:
             if not self.hover_vibrate_cooldown[hand.hand]:
@@ -334,7 +336,7 @@ class VRItem(Element):
                     self.velocity.z *= -1
                 else:
                     self.floor_reset()
-        
+
         if bounced and self.bounce_sound:
             vol = min(bounced / 10, 1) * self.bounce_vol_scale
             self.e['Sounds'].play_from(self.bounce_sound, volume=vol, position=self.pos)
@@ -348,7 +350,7 @@ class VRItem(Element):
 
         if point.type not in self.points:
             self.points[point.type] = []
-        
+
         self.points[point.type].append(point)
 
         point.parent = self
@@ -416,7 +418,7 @@ class VRItem(Element):
                             self.handle_interaction_event('grip', hand, point)
                         elif hand.trigger.pressed:
                             self.handle_interaction_event('trigger', hand, point)
-        
+
         for group in self.points:
             if group in {'grip', 'trigger_grip', 'grip_interact', 'trigger_interact'}:
                 for point in self.points[group]:
@@ -428,6 +430,7 @@ class VRItem(Element):
         uniforms['view_projection'] = camera.prepped_matrix
         uniforms['eye_pos'] = camera.eye_pos
         self.base_obj.vao.render(uniforms=uniforms)
+
 
 class Gun(VRItem):
     def __init__(self, base_obj, pos=None, parts={}):
@@ -530,7 +533,7 @@ class Gun(VRItem):
             vel_recovery_angle = math.atan2(-self.recoil_velocity.y, -self.recoil_velocity.x)
             self.recoil_velocity.x += math.cos(vel_recovery_angle) * vel_recovery_amount
             self.recoil_velocity.y += math.sin(vel_recovery_angle) * vel_recovery_amount
-        
+
         if self.spray_control_force:
             rec_recovery_amount = self.spray_control_force * dt
             if rec_recovery_amount > glm.length(self.recoil):
@@ -541,7 +544,7 @@ class Gun(VRItem):
                 rec_recovery_angle = math.atan2(-self.recoil.y, -self.recoil.x)
                 self.recoil.x += math.cos(rec_recovery_angle) * rec_recovery_amount
                 self.recoil.y += math.sin(rec_recovery_angle) * rec_recovery_amount
-            
+
         self.spray_control_force += dt * self.spray_control_force_scale
 
     def force_reload(self):
@@ -560,7 +563,7 @@ class Gun(VRItem):
                 self.fire()
                 self.cooldown = max(0, 1 / (self.rpm / 60) - self.residual_cooldown)
                 return True
-            
+
     def core_update(self):
         dt = self.e['XRWindow'].dt
         self.residual_cooldown = max(0, dt - self.cooldown) if self.cooldown else 0
@@ -610,6 +613,7 @@ class Gun(VRItem):
             self.rack_offset = glm.vec3(0)
             self.rack_point.hand_override = None
 
+
 class Knife(VRItem):
     def __init__(self, base_obj, pos=None):
         super().__init__(base_obj, pos=pos)
@@ -622,6 +626,7 @@ class Knife(VRItem):
         self.add_point(VRItemPoint('grip', (0, -0.4, 0), default=True))
 
         self.simple_grab = 0.3
+
 
 class Magazine(VRItem):
     def __init__(self, src_weapon, pos=None):
@@ -673,6 +678,7 @@ class Magazine(VRItem):
                         if glm.length(gun.first_point('slot_reference') - self.first_point('slot_reference')) > gun.reload_range * 1.5:
                             self.held_outside_load_range = True
 
+
 class M4(Gun):
     def __init__(self, base_obj, pos=None):
         super().__init__(base_obj, pos=pos, parts={'mag': elems['Demo'].m4_mag_res, 'rack': elems['Demo'].m4_rack_res})
@@ -707,6 +713,7 @@ class M4(Gun):
 
     def update(self):
         super().update()
+
 
 class Casing(VRItem):
     def __init__(self, src_weapon, pos=None):
