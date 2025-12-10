@@ -483,7 +483,7 @@ class Gun(VRItem):
         super().handle_interaction_event(event_type, hand, point)
 
         if point.type == 'magazine':
-            if (event_type == 'trigger') and (not hand.interacting):
+            if (event_type == 'trigger') and (not hand.interacting) and self.mag_loaded:
                 self.mag_loaded = False
                 mag = Magazine(self, hand.pos)
                 mag.remaining_capacity = self.remaining_capacity
@@ -563,6 +563,7 @@ class Gun(VRItem):
                 self.fire()
                 self.cooldown = max(0, 1 / (self.rpm / 60) - self.residual_cooldown)
                 return True
+        return False
 
     def core_update(self):
         dt = self.e['XRWindow'].dt
