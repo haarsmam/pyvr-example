@@ -12,6 +12,7 @@ from .xr_plugin_hack import hack_pyopenxr
 from .xrinput import XRInput
 from .elements import ElementSingleton
 
+
 class XRCamera(ElementSingleton):
     def __init__(self, pos=[0, 0, 1], target=[0, 0, 0], up=[0, 1, 0]):
         super().__init__()
@@ -36,12 +37,17 @@ class XRCamera(ElementSingleton):
 
             # hacked eye pos (not accurate for separate eye positions; just based on head pos)
             # only used for specular
-            self.eye_pos = [self.e['Demo'].player.world_pos.pos[0], self.pos[1] + self.e['Demo'].player.world_pos.pos[1], self.e['Demo'].player.world_pos.pos[2]]
+            self.eye_pos = [
+                self.e['Demo'].player.world_pos.pos[0],
+                self.pos[1] + self.e['Demo'].player.world_pos.pos[1],
+                self.e['Demo'].player.world_pos.pos[2],
+            ]
         else:
             self.prepped_matrix = self.matrix.as_numpy()
             self.eye_pos = list(self.pos)
 
         self.sky_matrix = self.matrix.as_numpy()
+
 
 class XRState(ElementSingleton):
     def __init__(self):
@@ -60,10 +66,11 @@ class XRState(ElementSingleton):
             return math.atan2(self.forward_vec.x, self.forward_vec.z)
         return 0
 
+
 class XRWindow(ElementSingleton):
     def __init__(self, application, dimensions=(800, 800), fps=165, title='VR Test'):
         super().__init__()
-        
+
         self.application = application
         self.dimensions = dimensions
         self.fps = fps
@@ -79,7 +86,9 @@ class XRWindow(ElementSingleton):
 
         self.motion_flags = [0, 1, 0]
 
-        #self.mem_check = tracker.SummaryTracker()
+        self.session_focused = False
+
+        # self.mem_check = tracker.SummaryTracker()
 
     def run(self):
         hack_pyopenxr(self.dimensions, self.title)
@@ -88,15 +97,18 @@ class XRWindow(ElementSingleton):
             instance_create_info=xr.InstanceCreateInfo(
                 enabled_extension_names=[
                     # A graphics extension is mandatory (without a headless extension)
-                    xr.KHR_OPENGL_ENABLE_EXTENSION_NAME,
-                ],
-            ),
+                    xr.KHR_OPENGL_ENABLE_EXTENSION_NAME
+                ]
+            )
         ) as context:
             self.application.init_mgl()
 
             self.input.init(context)
 
             for frame_index, frame_state in enumerate(context.frame_loop()):
+                # Track session state to pause game logic when unfocused
+                self.session_focused = frame_state.should_render
+
                 new_time = time.time()
                 self.dt = min(new_time - self.last_frame, 0.1)
                 self.last_frame = new_time
@@ -104,17 +116,10 @@ class XRWindow(ElementSingleton):
                 self.input.update(frame_state)
 
                 for view_index, view in enumerate(context.view_loop(frame_state)):
-                    projection = xr.Matrix4x4f.create_projection_fov(
-                        graphics_api=xr.GraphicsAPI.OPENGL,
-                        fov=view.fov,
-                        near_z=0.03,
-                        far_z=200.0
-                    )
+                    projection = xr.Matrix4x4f.create_projection_fov(graphics_api=xr.GraphicsAPI.OPENGL, fov=view.fov, near_z=0.03, far_z=200.0)
 
                     to_view = xr.Matrix4x4f.create_translation_rotation_scale(
-                        translation=view.pose.position,
-                        rotation=view.pose.orientation,
-                        scale=(1.0, 1.0, 1.0),
+                        translation=view.pose.position, rotation=view.pose.orientation, scale=(1.0, 1.0, 1.0)
                     )
                     new_view = xr.Matrix4x4f.invert_rigid_body(to_view)
 
@@ -135,13 +140,7 @@ class XRWindow(ElementSingleton):
                     if view_index == 0:
                         GL.glBindFramebuffer(GL.GL_DRAW_FRAMEBUFFER, 0)
                         size = (context.swapchains[0].width, context.swapchains[0].height)
-                        GL.glBlitFramebuffer(
-                            0, 0, size[0], size[1], 0, 0,
-                            1920, 1080,
-                            GL.GL_COLOR_BUFFER_BIT,
-                            GL.GL_NEAREST
-                        )
-                
+                        GL.glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, 1920, 1080, GL.GL_COLOR_BUFFER_BIT, GL.GL_NEAREST)
 
-                #if frame_index % 600 == 0:
+                # if frame_index % 600 == 0:
                 #    self.mem_check.print_diff()

@@ -64,7 +64,7 @@ class Demo(ElementSingleton):
             self.world.add_block('chiseled_stone', (-1 + pos[0], y + pos[1] - 1, 1 + pos[2]), rebuild=False)
             self.world.add_block('chiseled_stone', (-1 + pos[0], y + pos[1] - 1, -1 + pos[2]), rebuild=False)
             self.world.add_block('chiseled_stone', (1 + pos[0], y + pos[1] - 1, -1 + pos[2]), rebuild=False)
-            
+
             t = 'log'
             if y == 4:
                 t = 'chiseled_stone'
@@ -117,7 +117,7 @@ class Demo(ElementSingleton):
 
         self.grass_res = OBJ('data/models/grass/grass.obj', self.grass_shader, centered=False, save_geometry=True, no_build=True)
         self.tree_res = OBJ('data/models/tree/tree.obj', self.tree_shader, centered=False, save_geometry=True, no_build=True)
-        
+
         self.items = [M4(self.m4_res, (0, 1, i - 5)) for i in range(10)]
         for i in range(3):
             self.items.append(Knife(self.knife_res, (7, 1, i - 1)))
@@ -155,11 +155,17 @@ class Demo(ElementSingleton):
                         if random.random() < 0.5:
                             p = block.scaled_world_pos
                             self.world.add_decor(Decor(self.grass_res, (p[0] + BLOCK_SCALE * 0.5, p[1] + BLOCK_SCALE, p[2] + BLOCK_SCALE * 0.5)))
-                    
+
                     if random.random() < height:
                         if random.random() < 0.03:
                             p = block.scaled_world_pos
-                            self.world.add_decor(Decor(self.tree_res, (p[0] + BLOCK_SCALE * 0.5, p[1] + BLOCK_SCALE, p[2] + BLOCK_SCALE * 0.5), rot=glm.rotate(random.random() * math.pi * 2, (0, 1, 0))))
+                            self.world.add_decor(
+                                Decor(
+                                    self.tree_res,
+                                    (p[0] + BLOCK_SCALE * 0.5, p[1] + BLOCK_SCALE, p[2] + BLOCK_SCALE * 0.5),
+                                    rot=glm.rotate(random.random() * math.pi * 2, (0, 1, 0)),
+                                )
+                            )
 
         self.world.rebuild()
         self.world.rebuild_decor()
@@ -173,7 +179,7 @@ class Demo(ElementSingleton):
         self.player = PlayerBody()
 
         self.score = 0
-    
+
     @property
     def watch_text(self):
         return str(self.score)
@@ -211,11 +217,12 @@ class Demo(ElementSingleton):
             player_dis = glm.length(glm.vec3(self.player.world_pos.pos).xz - glm.vec3(spawn_pos).xz)
             if player_dis > 15:
                 self.npcs.append(NPC(spawn_pos))
-        
+
         self.player.late_cycle()
 
     def update(self, view_index):
-        if view_index == 0:
+        # Only update game logic when session is focused (headset on, app active)
+        if view_index == 0 and self.e['XRWindow'].session_focused:
             self.single_update()
 
         self.e['XRCamera'].cycle()
@@ -227,7 +234,7 @@ class Demo(ElementSingleton):
 
         for tracer in self.tracers:
             tracer.render(self.e['XRCamera'])
-        
+
         for particle in self.particles:
             particle.render(self.e['XRCamera'])
 
@@ -240,7 +247,7 @@ class Demo(ElementSingleton):
                 self.hand_entity.transform.pos = hand.interacting.hand_override
             elif hand.interacting and (hand.interacting.parent.alt_grip == hand.interacting):
                 self.hand_entity.transform.pos = hand.interacting.world_pos
-            else:    
+            else:
                 self.hand_entity.transform.pos = list(hand.pos)
             self.hand_entity.render(self.e['XRCamera'])
 
@@ -249,6 +256,7 @@ class Demo(ElementSingleton):
         self.world.render(self.e['XRCamera'], decor_uniforms={'time': time.time() - self.start_time})
 
         self.hud.render()
+
 
 if __name__ == '__main__':
     if is_already_running():
@@ -260,4 +268,3 @@ if __name__ == '__main__':
     except xr.exception.RuntimeFailureError:
         print("Error: SteamVR is not running. Please start SteamVR first.")
         sys.exit(1)
-
