@@ -190,6 +190,11 @@ class Demo(ElementSingleton):
     def single_update(self):
         self.hud.update()
         self.player.cycle()
+
+        # Check if player fell off the map
+        if self.player.world_pos.pos[1] < -50:
+            self.player.kill()
+
         for item in list(self.items):
             for hand in self.player.hands:
                 item.handle_interactions(hand)
