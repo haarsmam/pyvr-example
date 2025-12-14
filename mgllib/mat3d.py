@@ -1,5 +1,6 @@
 import numpy as np
 import glm
+import math
 
 
 class Transform3D:
@@ -106,11 +107,15 @@ def quat_scale(quat, amount):
     return glm.mix(no_rot, quat_2x, amount)
 
 
+# copilot : apply a power curve to the magnitude without changing the direction
 def vec3_exponent(vec, exp):
     vec = glm.vec3(vec)
     for i in range(3):
-        sign = vec[i] / abs(vec[i])
-        vec[i] = sign * (abs(vec[i]) ** exp)
+        value = float(vec[i])
+        if value == 0.0:
+            vec[i] = 0.0
+            continue
+        vec[i] = math.copysign(1.0, value) * (abs(value) ** exp)
     return vec
 
 
