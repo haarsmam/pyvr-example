@@ -4,10 +4,10 @@ import math
 
 import glm
 import numpy as np
-from pympler import tracker
 from OpenGL import GL
 import xr
 
+from .profiler import FrameProfiler
 from .xr_plugin_hack import hack_pyopenxr
 from .xrinput import XRInput
 from .elements import ElementSingleton
@@ -88,7 +88,7 @@ class XRWindow(ElementSingleton):
 
         self.session_focused = False
 
-        self.mem_check = tracker.SummaryTracker()
+        self.profiler = FrameProfiler()
 
     def run(self):
         hack_pyopenxr(self.dimensions, self.title)
@@ -105,7 +105,11 @@ class XRWindow(ElementSingleton):
 
             self.input.init(context)
 
+            self.profiler.install()
+
             for frame_index, frame_state in enumerate(context.frame_loop()):
+                self.profiler.begin_frame()
+
                 # Track session state to pause game logic when unfocused
                 self.session_focused = frame_state.should_render
 
@@ -142,5 +146,5 @@ class XRWindow(ElementSingleton):
                         size = (context.swapchains[0].width, context.swapchains[0].height)
                         GL.glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, 1920, 1080, GL.GL_COLOR_BUFFER_BIT, GL.GL_NEAREST)
 
-                # if frame_index % 600 == 0:
-                #    self.mem_check.print_diff()
+                self.profiler.end_frame()
+                self.profiler.maybe_report()

@@ -6,6 +6,8 @@ from ..elements import ElementSingleton, Element
 from .chunk import Chunk, CHUNK_SIZE, BLOCK_SCALE
 from .block import populate_block_cache
 from .const import MaxDepthReached
+from .culling import select_visible
+from ..profiler import active_profiler
 
 VALID_MOVEMENT_DIRECTIONS = [
     (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
@@ -200,6 +202,17 @@ class World(ElementSingleton):
         for chunk in self.chunks.values():
             chunk.rebuild_decor()
 
+    def visible_chunks(self, camera):
+        '''The chunks submitted to the GPU for this view.'''
+        return select_visible(self.chunks.values(), camera)
+
     def render(self, camera, uniforms={}, decor_uniforms={}):
-        for chunk in self.chunks.values():
+        chunks = self.visible_chunks(camera)
+
+        profiler = active_profiler()
+        if profiler:
+            profiler.count('chunk_candidates', len(self.chunks))
+            profiler.count('chunk_draws', len(chunks))
+
+        for chunk in chunks:
             chunk.render(camera, uniforms=uniforms, decor_uniforms=decor_uniforms)
