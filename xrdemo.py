@@ -7,6 +7,8 @@ import random
 import noise
 import socket
 import atexit
+import os
+import argparse
 
 import pygame
 from OpenGL import GL
@@ -31,6 +33,49 @@ from mgllib.entity import Entity
 from mgllib.hud import HUD
 
 _lock_socket = None
+
+
+def register_with_steamvr():
+    """Register this OpenXR application with SteamVR so it appears in the GUI (cross-platform)."""
+    manifest_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xrdemo.vrmanifest')
+
+    if not os.path.exists(manifest_path):
+        print(f"Warning: VR manifest not found at {manifest_path}")
+        return
+
+    import subprocess
+    import platform
+
+    # Determine platform-specific vrmonitor path
+    if platform.system() == "Windows":
+        # Try common Steam installation paths on Windows
+        steam_paths = [
+            os.path.join(
+                os.environ.get('PROGRAMFILES(X86)', 'C:\\Program Files (x86)'), 'Steam', 'steamapps', 'common', 'SteamVR', 'bin', 'win64', 'vrmonitor.exe'
+            ),
+            os.path.join(os.environ.get('PROGRAMFILES', 'C:\\Program Files'), 'Steam', 'steamapps', 'common', 'SteamVR', 'bin', 'win64', 'vrmonitor.exe'),
+        ]
+        vrmonitor_path = next((p for p in steam_paths if os.path.exists(p)), None)
+    else:  # Linux
+        vrmonitor_path = os.path.expanduser("~/.steam/steam/steamapps/common/SteamVR/bin/vrmonitor.sh")
+
+    if vrmonitor_path and os.path.exists(vrmonitor_path):
+        try:
+            result = subprocess.run([vrmonitor_path, "--register", manifest_path], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                print("Successfully registered with SteamVR")
+            else:
+                print(f"Registration returned code {result.returncode}")
+        except subprocess.TimeoutExpired:
+            print("Registration timed out (this is sometimes normal)")
+        except Exception as e:
+            print(f"Could not auto-register: {e}")
+    else:
+        print(f"To register manually, run:")
+        if platform.system() == "Windows":
+            print(f'  "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrmonitor.exe" --register "{manifest_path}"')
+        else:
+            print(f"  ~/.steam/steam/steamapps/common/SteamVR/bin/vrmonitor.sh --register {manifest_path}")
 
 
 def is_already_running():
@@ -217,7 +262,7 @@ class Demo(ElementSingleton):
             if kill:
                 self.npcs.remove(npc)
 
-        while len(self.npcs) < 5:
+        while len(self.npcs) < 0:
             spawn_pos = (random.randint(-40, 40), 10, random.randint(-40, 40))
             player_dis = glm.length(glm.vec3(self.player.world_pos.pos).xz - glm.vec3(spawn_pos).xz)
             if player_dis > 15:
@@ -267,6 +312,17 @@ if __name__ == '__main__':
     if is_already_running():
         print("xrdemo is already running!")
         sys.exit(1)
+
+    parser = argparse.ArgumentParser(add_help=True)
+    mirror_group = parser.add_mutually_exclusive_group()
+    mirror_group.add_argument("--mirror", dest="mirror", action="store_true", default=True, help="Show desktop mirror window/output (default)")
+    mirror_group.add_argument("--no-mirror", dest="mirror", action="store_false", help="Disable desktop mirroring and hide the GLFW window")
+    args = parser.parse_args()
+
+    # Used by mgllib.xr_plugin_hack and mgllib.xrwin at runtime.
+    os.environ["PYVR_MIRROR"] = "1" if args.mirror else "0"
+
+    # register_with_steamvr()
 
     try:
         Demo().run()

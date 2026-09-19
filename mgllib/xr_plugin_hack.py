@@ -1,7 +1,9 @@
 import ctypes
 import platform
+import os
 
 from OpenGL import GL
+
 if platform.system() == "Windows":
     from OpenGL import WGL
     from xr.platform.windows import *
@@ -17,6 +19,7 @@ from xr.typedefs import *
 from xr.functions import *
 
 from .const import FORCE_SRGB
+
 
 def hack_pyopenxr(window_size, window_title='VR Test'):
 
@@ -34,17 +37,10 @@ def hack_pyopenxr(window_size, window_title='VR Test'):
             raise XrException("GLFW initialization failed")
         self.window_size = window_size
         self.pxrGetOpenGLGraphicsRequirementsKHR = ctypes.cast(
-            get_instance_proc_addr(
-                instance=instance,
-                name="xrGetOpenGLGraphicsRequirementsKHR",
-            ),
-            PFN_xrGetOpenGLGraphicsRequirementsKHR
+            get_instance_proc_addr(instance=instance, name="xrGetOpenGLGraphicsRequirementsKHR"), PFN_xrGetOpenGLGraphicsRequirementsKHR
         )
         self.graphics_requirements = GraphicsRequirementsOpenGLKHR()
-        result = self.pxrGetOpenGLGraphicsRequirementsKHR(
-            instance,
-            system,
-            ctypes.byref(self.graphics_requirements))
+        result = self.pxrGetOpenGLGraphicsRequirementsKHR(instance, system, ctypes.byref(self.graphics_requirements))
         result = check_result(Result(result))
         if result.is_exception():
             raise result
@@ -52,6 +48,12 @@ def hack_pyopenxr(window_size, window_title='VR Test'):
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 5)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+
+        # Keep a GLFW window/context for OpenXR, but optionally hide it.
+        # The desktop mirror blit is also gated separately in mgllib.xrwin.
+        if os.environ.get("PYVR_MIRROR", "1") == "0":
+            glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
+
         self.window = glfw.create_window(*self.window_size, window_title, None, None)
         if self.window is None:
             raise XrException("Failed to create GLFW window")
@@ -68,11 +70,7 @@ def hack_pyopenxr(window_size, window_title='VR Test'):
             drawable = GLX.glXGetCurrentDrawable()
             context = GLX.glXGetCurrentContext()
             display = GLX.glXGetCurrentDisplay()
-            self.graphics_binding = GraphicsBindingOpenGLXlibKHR(
-                x_display=display,
-                glx_drawable=drawable,
-                glx_context=context,
-            )
+            self.graphics_binding = GraphicsBindingOpenGLXlibKHR(x_display=display, glx_drawable=drawable, glx_context=context)
         else:
             raise NotImplementedError
         self.swapchain_framebuffer = None
@@ -118,7 +116,7 @@ def hack_pyopenxr(window_size, window_title='VR Test'):
         except GL.error.GLError as e:
             # Suppress invalid value error for glBindFramebuffer
             if e.err == 1281:
-                 print(f"[WARNING] Suppressed expected OpenGL Error manually in begin_frame: {e}")
+                print(f"[WARNING] Suppressed expected OpenGL Error manually in begin_frame: {e}")
             else:
                 raise e
 

@@ -173,6 +173,10 @@ class VRItem(Element):
         self.primary_grip = None
         self.alt_grip = None
 
+        # Per-item rotation offset applied when the item is held from a single grip.
+        # This lets us tune how a model sits in the user's hand without changing controller pose.
+        self.grip_rotation_offset = glm.quat()
+
         self.holding_rotation = glm.quat()
 
         self.pos = glm.vec3(pos) if pos else glm.vec3(0.0, 0.0, 0.0)
@@ -361,7 +365,7 @@ class VRItem(Element):
             inverse_pivot = self.primary_grip.pos * -1
             recoil_rotation = glm.rotate(self.recoil.x, glm.vec3(0, 1, 0)) * glm.rotate(self.recoil.y, glm.vec3(1, 0, 0))
             if not self.alt_grip:
-                rotation = self.primary_grip.input_rotation
+                rotation = self.primary_grip.input_rotation * self.grip_rotation_offset
                 translation = glm.translate(self.primary_grip.input_pos)
                 self.transform = translation * glm.mat4(rotation) * recoil_rotation * scale_mat * glm.translate(inverse_pivot)
 
@@ -618,6 +622,11 @@ class Gun(VRItem):
 class Knife(VRItem):
     def __init__(self, base_obj, pos=None):
         super().__init__(base_obj, pos=pos)
+
+        # Tune how the knife sits in the hand.
+        # If it feels "rotated back" (tip too high / handle too low), make this more negative.
+        KNIFE_GRIP_PITCH_DEG = -40.0
+        self.grip_rotation_offset = glm.angleAxis(glm.radians(KNIFE_GRIP_PITCH_DEG), glm.vec3(1, 0, 0))
 
         self.scale = glm.vec3(0.25, 0.25, 0.25)
         self.bounce = 0.5

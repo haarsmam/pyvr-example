@@ -1,4 +1,4 @@
-import gc
+import os
 import time
 import math
 
@@ -88,7 +88,7 @@ class XRWindow(ElementSingleton):
 
         self.session_focused = False
 
-        # self.mem_check = tracker.SummaryTracker()
+        self.mem_check = tracker.SummaryTracker()
 
     def run(self):
         hack_pyopenxr(self.dimensions, self.title)
@@ -137,7 +137,7 @@ class XRWindow(ElementSingleton):
                     self.application.update(view_index)
 
                     # mirror the result to the window
-                    if view_index == 0:
+                    if os.environ.get("PYVR_MIRROR", "1") != "0" and view_index == 0:
                         GL.glBindFramebuffer(GL.GL_DRAW_FRAMEBUFFER, 0)
                         size = (context.swapchains[0].width, context.swapchains[0].height)
                         GL.glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, 1920, 1080, GL.GL_COLOR_BUFFER_BIT, GL.GL_NEAREST)
