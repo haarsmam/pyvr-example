@@ -1,4 +1,5 @@
 import math
+import os
 
 import astar
 
@@ -6,7 +7,7 @@ from ..elements import ElementSingleton, Element
 from .chunk import Chunk, CHUNK_SIZE, BLOCK_SCALE
 from .block import populate_block_cache
 from .const import MaxDepthReached
-from .culling import select_visible
+from .culling import ChunkCuller
 from ..profiler import active_profiler
 
 VALID_MOVEMENT_DIRECTIONS = [
@@ -57,6 +58,9 @@ class World(ElementSingleton):
 
         self.chunks = {}
         self.program = program
+
+        # 'off' submits every chunk as before, for A/B measurement.
+        self.culler = ChunkCuller(enabled=os.environ.get('PYVR_CULL', 'on') != 'off')
 
         populate_block_cache()
 
@@ -118,6 +122,9 @@ class World(ElementSingleton):
             self.chunks[chunk_id] = Chunk(self, chunk_id)
         
         self.chunks[chunk_id].add_decor(decor)
+
+        # Decor reaches outside its chunk's cube, so the cached bounds are stale.
+        self.culler.invalidate()
 
     def get_block(self, world_pos):
         chunk_id = tuple(int(world_pos[i] // CHUNK_SIZE) for i in range(3))
@@ -202,9 +209,11 @@ class World(ElementSingleton):
         for chunk in self.chunks.values():
             chunk.rebuild_decor()
 
+        self.culler.invalidate()
+
     def visible_chunks(self, camera):
         '''The chunks submitted to the GPU for this view.'''
-        return select_visible(self.chunks.values(), camera)
+        return self.culler.select(self.chunks.values(), camera)
 
     def render(self, camera, uniforms={}, decor_uniforms={}):
         chunks = self.visible_chunks(camera)

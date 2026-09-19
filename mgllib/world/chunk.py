@@ -31,11 +31,40 @@ class Chunk(Element):
         self.decor = {}
         self.decor_vaos = {}
 
+        self._world_bounds = None
+
+    @property
+    def world_bounds(self):
+        '''(min, max) corners of everything this chunk draws, in world space.'''
+        if self._world_bounds is None:
+            self._world_bounds = self._compute_world_bounds()
+        return self._world_bounds
+
+    def _compute_world_bounds(self):
+        # Block vertices are chunk-local and span [0, CHUNK_SIZE] before the
+        # chunk's world_transform scales them by BLOCK_SCALE, so the blocks can
+        # never leave this cube.
+        extent = CHUNK_SIZE * BLOCK_SCALE
+        low = [v * BLOCK_SCALE for v in self.world_offset]
+        high = [v + extent for v in low]
+
+        # Decor is already in world space and is not bound by the cube.
+        for group in self.decor.values():
+            for decor in group:
+                decor_low, decor_high = decor.bounds
+                for axis in range(3):
+                    low[axis] = min(low[axis], decor_low[axis])
+                    high[axis] = max(high[axis], decor_high[axis])
+
+        return tuple(low), tuple(high)
+
     def add_decor(self, decor):
         group = decor.source.name
         if group not in self.decor:
             self.decor[group] = []
         self.decor[group].append(decor)
+
+        self._world_bounds = None
 
     def release(self):
         if self.tvaos:

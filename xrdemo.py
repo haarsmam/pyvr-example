@@ -323,11 +323,15 @@ if __name__ == '__main__':
         default="managed",
         help="'managed' freezes the startup heap and collects at frame end; 'default' leaves CPython's collector alone (for comparison)",
     )
+    cull_group = parser.add_mutually_exclusive_group()
+    cull_group.add_argument("--cull", dest="cull", action="store_true", default=True, help="Frustum-cull chunks (default)")
+    cull_group.add_argument("--no-cull", dest="cull", action="store_false", help="Submit every chunk regardless of the view (for comparison)")
     args = parser.parse_args()
 
     # Used by mgllib.xr_plugin_hack and mgllib.xrwin at runtime.
     os.environ["PYVR_MIRROR"] = "1" if args.mirror else "0"
     os.environ["PYVR_GC"] = args.gc
+    os.environ["PYVR_CULL"] = "on" if args.cull else "off"
 
     # register_with_steamvr()
 

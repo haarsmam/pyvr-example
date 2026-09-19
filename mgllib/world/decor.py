@@ -55,6 +55,12 @@ class Decor(Element):
 
         buffer = []
 
+        # Vertices are baked into world space here and the decor shaders ignore
+        # world_transform, so these bounds are what culling has to test against.
+        # A tree reaches well outside the chunk that owns its base.
+        low = [float('inf')] * 3
+        high = [float('-inf')] * 3
+
         for material in self.source.geometry.materials:
             if len(self.source.geometry.materials[material]):
                 for vertex in self.source.geometry.materials[material]:
@@ -62,6 +68,9 @@ class Decor(Element):
                         item = vertex[group]
                         if group == 'vert':
                             item = tuple(self.transform * glm.vec3(item))
+                            for axis in range(3):
+                                low[axis] = min(low[axis], item[axis])
+                                high[axis] = max(high[axis], item[axis])
                         if group == 'normal':
                             item = tuple(glm.normalize(self.normal_transform * glm.vec4(glm.vec3(item), 0.0)).xyz)
                         for v in item:
@@ -70,3 +79,10 @@ class Decor(Element):
                         buffer.append(v)
         
         self.buffer = array('f', buffer)
+
+        # An empty model has no extent; collapse it onto its own origin.
+        if low[0] > high[0]:
+            low = list(self.pos)
+            high = list(self.pos)
+
+        self.bounds = (tuple(low), tuple(high))
