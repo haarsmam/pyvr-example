@@ -317,10 +317,17 @@ if __name__ == '__main__':
     mirror_group = parser.add_mutually_exclusive_group()
     mirror_group.add_argument("--mirror", dest="mirror", action="store_true", default=True, help="Show desktop mirror window/output (default)")
     mirror_group.add_argument("--no-mirror", dest="mirror", action="store_false", help="Disable desktop mirroring and hide the GLFW window")
+    parser.add_argument(
+        "--gc",
+        choices=("managed", "default"),
+        default="managed",
+        help="'managed' freezes the startup heap and collects at frame end; 'default' leaves CPython's collector alone (for comparison)",
+    )
     args = parser.parse_args()
 
     # Used by mgllib.xr_plugin_hack and mgllib.xrwin at runtime.
     os.environ["PYVR_MIRROR"] = "1" if args.mirror else "0"
+    os.environ["PYVR_GC"] = args.gc
 
     # register_with_steamvr()
 

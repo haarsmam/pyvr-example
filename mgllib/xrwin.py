@@ -7,6 +7,7 @@ import numpy as np
 from OpenGL import GL
 import xr
 
+from .gc_control import ManagedGC
 from .profiler import FrameProfiler
 from .xr_plugin_hack import hack_pyopenxr
 from .xrinput import XRInput
@@ -90,6 +91,9 @@ class XRWindow(ElementSingleton):
 
         self.profiler = FrameProfiler()
 
+        # 'default' leaves CPython's automatic collector alone, for A/B measurement.
+        self.gc_control = ManagedGC(enabled=os.environ.get('PYVR_GC', 'managed') != 'default')
+
     def run(self):
         hack_pyopenxr(self.dimensions, self.title)
 
@@ -106,6 +110,12 @@ class XRWindow(ElementSingleton):
             self.input.init(context)
 
             self.profiler.install()
+
+            # Everything alive at this point is the permanent heap: the world is
+            # fully built by init_mgl() and never edited afterwards.
+            frozen = self.gc_control.freeze_baseline()
+            if frozen:
+                print('[GC] froze {0} startup objects, automatic collection disabled'.format(frozen), flush=True)
 
             for frame_index, frame_state in enumerate(context.frame_loop()):
                 self.profiler.begin_frame()
@@ -145,6 +155,12 @@ class XRWindow(ElementSingleton):
                         GL.glBindFramebuffer(GL.GL_DRAW_FRAMEBUFFER, 0)
                         size = (context.swapchains[0].width, context.swapchains[0].height)
                         GL.glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, 1920, 1080, GL.GL_COLOR_BUFFER_BIT, GL.GL_NEAREST)
+
+                # Collect after submit, while the compositor has the frame and
+                # before xrWaitFrame throttles us. Inside the profiler's span on
+                # purpose, so the cost shows up in the numbers rather than hiding
+                # between frames.
+                self.gc_control.step(frame_index)
 
                 self.profiler.end_frame()
                 self.profiler.maybe_report()
